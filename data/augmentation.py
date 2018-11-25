@@ -45,6 +45,8 @@ def augmentation(features,labels, Multiply=2 ):
             (features, seq.augment_images(old_features)), axis=0)
         labels = np.concatenate((labels, old_labels), axis=0)
 
+    # free memmory 
     del old_labels, old_features
+
     return features, labels
 

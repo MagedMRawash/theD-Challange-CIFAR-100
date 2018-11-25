@@ -1,10 +1,10 @@
 # theD-Challange-CIFAR-100
 
-this repo. contains Convulotional Neural Network implementation using Tensoreflow python 
+this repo. contains Convolutional Neural Network implementation using Tensoreflow python 
 ## How to use !
   - Install required dependanceies 
     ```sh
-    $ pip install -r requirments.txt 
+    $ pip install -r requirements.txt
     ```
 - to use the mode in predection 
     ```sh
@@ -17,7 +17,7 @@ this repo. contains Convulotional Neural Network implementation using Tensoreflo
         ```
 ### Future work
 
-Next i will implement the next Arch.s .
+Next i will implement the follwing Arch.s .
 
 | Arch. | URL |
 | ------ | ------ |

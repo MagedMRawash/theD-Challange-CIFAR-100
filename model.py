@@ -2,6 +2,7 @@
 import gc
 import sys
 import numpy as np
+from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from data.preparation import training_data
 import argparse
@@ -16,7 +17,16 @@ if __name__ == '__main__':
     on_cloud = args.cloud
 
 # training data preparation
-X_train, X_validation, y_train, y_validation = training_data(on_cloud=on_cloud)
+features, labels = training_data(on_cloud=on_cloud)
+
+# cross validation spliting
+X_train, X_validation, y_train, y_validation = train_test_split(
+    features, labels, test_size=0.2, random_state=42)
+
+# reshaping input data
+X_train = np.reshape(X_train, [-1, 32, 32, 1])
+X_validation = np.reshape(X_validation, [-1, 32, 32, 1])
+
 
 tf.reset_default_graph()
 
