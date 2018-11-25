@@ -8,7 +8,7 @@ input:
     destination: data
 #description: this is a test
 #max_runtime: 3600
-command: python model.py
+command: python model.py --cloud
 
 # You can also define multiple tasks to use with --task argument:
 #

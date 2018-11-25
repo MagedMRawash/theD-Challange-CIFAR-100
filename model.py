@@ -4,19 +4,19 @@ import sys
 import numpy as np
 import tensorflow as tf
 from data.preparation import training_data
-import argparse 
+import argparse
 # for carbage collection
 gc.enable()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument( '--cloud', action="store_true", dest="cloud" )
+    parser.add_argument('--cloud', action="store_true", dest="cloud")
     args = parser.parse_args()
     on_cloud = args.cloud
 
 # training data preparation
-X_train, X_validation, y_train, y_validation = training_data( on_cloud = on_cloud )
+X_train, X_validation, y_train, y_validation = training_data(on_cloud=on_cloud)
 
 
 tf.reset_default_graph()
@@ -30,7 +30,7 @@ batch_size = 100
 
 # %%
 # declear dynamic data placeholder
-x = tf.placeholder(tf.float32, [None, 32, 32, 1],name='x')
+x = tf.placeholder(tf.float32, [None, 32, 32, 1], name='x')
 y = tf.placeholder(tf.float32, [None, n_classes], name='y')
 
 # Config.
@@ -57,12 +57,20 @@ def batch_norm(x, simple=False):
     return x
 
 
-def conv_layer(x, w, b, strides=1):
+def conv_layer(x, w, wr, b, strides=1):
+
+    x2 = x
 
     x = tf.nn.conv2d(x, w, strides=[1, strides, strides, 1], padding='SAME')
     x = batch_norm(x)
     x = tf.nn.bias_add(x, b)
     x = tf.nn.relu(x)
+
+    x2 = tf.nn.conv2d(x2, w, strides=[1, strides, strides, 1], padding='SAME')
+    x2 = batch_norm(x2)
+    x = tf.add(x,  x2)
+    # x = tf.nn.bias_add(x, b)
+    # x = tf.nn.relu(x)
 
     return maxpool(x)
 
@@ -77,15 +85,23 @@ def dropout(x):
 
 weights = {
     'wc1': tf.get_variable('w0', shape=(5, 5, 1, 32), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc2': tf.get_variable('w1', shape=(5, 5, 32, 64), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc1r': tf.get_variable('w0r', shape=(5, 5, 32, 64), initializer=tf.contrib.layers.xavier_initializer()),
+
+    'wc2': tf.get_variable('w1', shape=(5, 5,  32, 64), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc2r': tf.get_variable('w1r', shape=(5, 5, 128, 256), initializer=tf.contrib.layers.xavier_initializer()),
+
     'wc3': tf.get_variable('w2', shape=(3, 3, 64, 128), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc3r': tf.get_variable('w2r', shape=(3, 3, 512, 1024), initializer=tf.contrib.layers.xavier_initializer()),
+
     'wc4': tf.get_variable('w3', shape=(1, 1, 128, 256), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc4r': tf.get_variable('w3r', shape=(1, 1, 2048, 4096), initializer=tf.contrib.layers.xavier_initializer()),
+
     'wf': tf.get_variable('wf', shape=(2*2*256, 256), initializer=tf.contrib.layers.xavier_initializer()),
-    'wf2': tf.get_variable('wf2', shape=(256, 200), initializer=tf.contrib.layers.xavier_initializer()),
-    'wf3': tf.get_variable('wf3', shape=(200, 160), initializer=tf.contrib.layers.xavier_initializer()),
+    'wf2': tf.get_variable('wf2', shape=(256, 512), initializer=tf.contrib.layers.xavier_initializer()),
+    'wf3': tf.get_variable('wf3', shape=(512, 256), initializer=tf.contrib.layers.xavier_initializer()),
+    'wf4': tf.get_variable('wf4', shape=(256, 170), initializer=tf.contrib.layers.xavier_initializer()),
 
-
-    'out': tf.get_variable('wout', shape=(160, n_classes), initializer=tf.contrib.layers.xavier_initializer()),
+    'out': tf.get_variable('wout', shape=(170, n_classes), initializer=tf.contrib.layers.xavier_initializer()),
 }
 biases = {
     'bc1': tf.get_variable('b0', shape=(32), initializer=tf.contrib.layers.xavier_initializer()),
@@ -93,8 +109,9 @@ biases = {
     'bc3': tf.get_variable('b2', shape=(128), initializer=tf.contrib.layers.xavier_initializer()),
     'bc4': tf.get_variable('b3', shape=(256), initializer=tf.contrib.layers.xavier_initializer()),
     'bf': tf.get_variable('bf', shape=(256), initializer=tf.contrib.layers.xavier_initializer()),
-    'bf2': tf.get_variable('bf2', shape=(200), initializer=tf.contrib.layers.xavier_initializer()),
-    'bf3': tf.get_variable('bf3', shape=(160), initializer=tf.contrib.layers.xavier_initializer()),
+    'bf2': tf.get_variable('bf2', shape=(512), initializer=tf.contrib.layers.xavier_initializer()),
+    'bf3': tf.get_variable('bf3', shape=(256), initializer=tf.contrib.layers.xavier_initializer()),
+    'bf4': tf.get_variable('bf4', shape=(170), initializer=tf.contrib.layers.xavier_initializer()),
 
     'out': tf.get_variable('bout', shape=(n_classes), initializer=tf.contrib.layers.xavier_initializer()),
 }
@@ -103,13 +120,13 @@ biases = {
 def model(x, weights, biases):
 
     # convolution layers
-    conv1 = conv_layer(x, weights['wc1'], biases['bc1'])
+    conv1 = conv_layer(x, weights['wc1'], weights['wc1r'], biases['bc1'])
 
-    conv2 = conv_layer(conv1, weights['wc2'], biases['bc2'])
+    conv2 = conv_layer(conv1, weights['wc2'], weights['wc2r'], biases['bc2'])
 
-    conv3 = conv_layer(conv2, weights['wc3'], biases['bc3'])
+    conv3 = conv_layer(conv2, weights['wc3'], weights['wc3r'], biases['bc3'])
 
-    conv4 = conv_layer(conv3, weights['wc4'], biases['bc4'])
+    conv4 = conv_layer(conv3, weights['wc4'], weights['wc4r'], biases['bc4'])
 
     # flatten
     # - Reshape conv4 output to fit fully connected layer input
@@ -130,25 +147,28 @@ def model(x, weights, biases):
     layer_3 = tf.nn.relu(layer_3)
     layer_3 = tf.layers.dropout(layer_3)
 
+    layer_4 = tf.add(tf.matmul(layer_3, weights['wf4']), biases['bf4'])
+    layer_4 = tf.nn.relu(layer_4)
+    layer_4 = tf.layers.dropout(layer_4)
 
 #     layer_2 = dropout(layer_2)
 
     # output layer
-    return tf.add(tf.matmul(layer_3, weights['out']), biases['out'])
+    return tf.add(tf.matmul(layer_4, weights['out']), biases['out'])
 
 
 # Loss and Optimizer Nodes
 logits = model(x, weights, biases)
 
 cost = tf.reduce_mean(
-    tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=y,name='logits'),name='cost')
+    tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=y, name='logits'), name='cost')
 
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
 predictions = tf.argmax(logits, 1, name="predictions")
 
 # Evaluate Model Node
-correct_prediction = tf.equal(predictions , tf.argmax(y, 1))
+correct_prediction = tf.equal(predictions, tf.argmax(y, 1))
 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -200,4 +220,6 @@ with tf.Session() as sess:
     # Save the variables to disk.
     save_path = saver.save(sess, "./model.ckpt")
     print("Model saved in file: %s" % save_path)
+    np.save('plt_data', {'train_loss':train_loss,'train_accuracy':train_accuracy,'test_loss':test_loss,'test_accuracy':test_accuracy })
     summary.close()
+

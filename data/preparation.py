@@ -25,7 +25,6 @@ def training_data(on_cloud=False) :
     from pandas import read_pickle
     from data.augmentation import augmentation
 
-    print( 'on_cloud', on_cloud )
     pickle_file = '/floyd/input/data/train' if on_cloud  else'./dataset/train'
     # load data
     train_data = read_pickle(pickle_file)
