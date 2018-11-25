@@ -1,0 +1,22 @@
+# see: https://docs.floydhub.com/floyd_config
+# All supported configs:
+#
+machine: gpu
+env: tensorflow-1.11
+input:
+  - source: maged/datasets/thed_cnn_train/1
+    destination: data
+#description: this is a test
+#max_runtime: 3600
+command: python model.py
+
+# You can also define multiple tasks to use with --task argument:
+#
+#task:
+#  evaluate:
+#    machine: gpu
+#    command: python evaluate.py
+#
+#  serve:
+#    machine: cpu
+#    mode: serve
