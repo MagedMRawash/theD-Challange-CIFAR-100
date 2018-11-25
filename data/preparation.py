@@ -41,7 +41,7 @@ def training_data(on_cloud=False) :
     features = [cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for image in features]
     
     # data augmentation
-    features, labels = augmentation(features, labels, 1)
+    features, labels = augmentation(features, labels, 4)
 
 
     # reshape for standarization process
