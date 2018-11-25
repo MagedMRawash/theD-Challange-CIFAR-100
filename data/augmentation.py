@@ -1,6 +1,6 @@
 from imgaug import augmenters as iaa
 import imgaug as ia
-import numpy as np 
+import numpy as np
 
 # Dataset augmentation
 seq = iaa.SomeOf((0, 4), [
@@ -29,24 +29,22 @@ seq = iaa.SomeOf((0, 4), [
 ], random_order=True)  # apply augmenters in random order
 
 
-
-def augmentation(features,labels, Multiply=2 ):
+def augmentation(features, labels, Multiply=2):
     """
     this function do augmentation on images an return it multiplied 
         :param features: 
         :param labels: 
         :param Multiply=2: 
     """
-    old_labels = labels
     old_features = features
+    old_labels = labels
 
     for i in range(Multiply):
         features = np.concatenate(
             (features, seq.augment_images(old_features)), axis=0)
         labels = np.concatenate((labels, old_labels), axis=0)
 
-    # free memmory 
+    # free memmory
     del old_labels, old_features
 
     return features, labels
-

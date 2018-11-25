@@ -10,6 +10,13 @@ import argparse
 gc.enable()
 
 
+# %%
+# TODO:
+# - move all Strings or veriables to config. file
+# - handle if the predected image is bigger than 32 * 32
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--cloud', action="store_true", dest="cloud")
@@ -23,6 +30,8 @@ features, labels = training_data(on_cloud=on_cloud)
 X_train, X_validation, y_train, y_validation = train_test_split(
     features, labels, test_size=0.2, random_state=42)
 
+del features, labels
+
 # reshaping input data
 X_train = np.reshape(X_train, [-1, 32, 32, 1])
 X_validation = np.reshape(X_validation, [-1, 32, 32, 1])
@@ -34,7 +43,7 @@ tf.reset_default_graph()
 n_classes = 100
 epochs = 250
 learning_rate = 0.001
-batch_size = 100
+batch_size = 64
 
 
 # declear dynamic data placeholder
@@ -44,6 +53,7 @@ y = tf.placeholder(tf.float32, [None, n_classes], name='y')
 # Config.
 is_training = tf.placeholder(tf.bool, name='is_training')
 keep_prob = tf.constant(0.60, tf.float32)
+
 
 def batch_norm(x, simple=False):
     """
@@ -70,8 +80,7 @@ def conv_layer(x, w, wr, b, strides=1):
     xr = tf.nn.conv2d(xr, wr, strides=[1, strides, strides, 1], padding='SAME')
     xr = batch_norm(xr)
     x = tf.add(x,  xr)
-    # x = tf.nn.bias_add(x, b)
-    # x = tf.nn.relu(x)
+
 
     return maxpool(x)
 
@@ -122,13 +131,13 @@ biases = {
 def model(x, weights, biases):
 
     # convolution layers
-    conv1 = conv_layer(x, weights['wc1'],weights['wc1r'], biases['bc1'])
+    conv1 = conv_layer(x, weights['wc1'], weights['wc1r'], biases['bc1'])
 
-    conv2 = conv_layer(conv1, weights['wc2'],weights['wc2r'], biases['bc2'])
+    conv2 = conv_layer(conv1, weights['wc2'], weights['wc2r'], biases['bc2'])
 
-    conv3 = conv_layer(conv2, weights['wc3'],weights['wc3r'], biases['bc3'])
+    conv3 = conv_layer(conv2, weights['wc3'], weights['wc3r'], biases['bc3'])
 
-    conv4 = conv_layer(conv3, weights['wc4'],weights['wc4r'], biases['bc4'])
+    conv4 = conv_layer(conv3, weights['wc4'], weights['wc4r'], biases['bc4'])
 
     # flatten
     # - Reshape conv4 output to fit fully connected layer input
@@ -139,7 +148,6 @@ def model(x, weights, biases):
     layer_1 = tf.add(tf.matmul(flatten_layer, weights['wf']), biases['bf'])
     layer_1 = tf.nn.relu(layer_1)
     layer_1 = tf.layers.dropout(layer_1)
-#     layer_1 = dropout(layer_1)
 
     layer_2 = tf.add(tf.matmul(layer_1, weights['wf2']), biases['bf2'])
     layer_2 = tf.nn.relu(layer_2)
@@ -152,8 +160,6 @@ def model(x, weights, biases):
     layer_4 = tf.add(tf.matmul(layer_3, weights['wf4']), biases['bf4'])
     layer_4 = tf.nn.relu(layer_4)
     layer_4 = tf.layers.dropout(layer_4, rate=0.4)
-
-#     layer_2 = dropout(layer_2)
 
     # output layer
     return tf.add(tf.matmul(layer_4, weights['out']), biases['out'])
@@ -222,6 +228,6 @@ with tf.Session() as sess:
     # Save the variables to disk.
     save_path = saver.save(sess, "./model.ckpt")
     print("Model saved in file: %s" % save_path)
-    np.save('plt_data', {'train_loss':train_loss,'train_accuracy':train_accuracy,'test_loss':test_loss,'test_accuracy':test_accuracy })
+    np.save('plt_data', {'train_loss': train_loss, 'train_accuracy': train_accuracy,
+                         'test_loss': test_loss, 'test_accuracy': test_accuracy})
     summary.close()
-

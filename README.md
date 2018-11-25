@@ -1,6 +1,7 @@
 # theD-Challange-CIFAR-100
 
 this repo. contains Convolutional Neural Network implementation using Tensoreflow python 
+Note : this old version of code achives 53% URL : https://github.com/Rawash/theD-Challange-CIFAR-100/blob/0d7441311e4bd127d200e5570cd65d5846e324fd/model.py
 ## How to use !
   - Install required dependanceies 
     ```sh
