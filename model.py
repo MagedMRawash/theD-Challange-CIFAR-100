@@ -1,108 +1,22 @@
-# %%
 # lib. import section
-from imgaug import augmenters as iaa
-import imgaug as ia
 import gc
 import sys
 import numpy as np
-import cv2
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
-from pandas import read_pickle
 import tensorflow as tf
-print('tensorflow.__version__', tf.__version__)
-# '1.10.0'
+from data.preparation import training_data
+import argparse 
 # for carbage collection
 gc.enable()
 
 
-# Dataset augmentation
-seq = iaa.SomeOf((0,4), [
-    iaa.Noop(),
-    iaa.Fliplr(0.5),  # horizontal flips
-    # Small gaussian blur with random sigma between 0 and 0.5.
-    iaa.GaussianBlur(sigma=(0, 3)),
-    iaa.Multiply((0.2, 2)),
-    # Strengthen or weaken the contrast in each image.
-    iaa.ContrastNormalization((0.5, 1.5)),
-    # Add gaussian noise.
-    # For 50% of all images, we sample the noise once per pixel.
-    # For the other 50% of all images, we sample the noise per pixel AND
-    # channel. This can change the color (not only brightness) of the
-    # pixels.
-    iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.02*255), per_channel=0.2),
-    # Make some images brighter and some darker.
-    # In 20% of all cases, we sample the multiplier once per channel,
-    # which can end up changing the color of the images.
-    # Apply affine transformations to each image.
-    # Scale/zoom them, translate/move them, rotate them and shear them.
-    iaa.Sometimes(0.7,
-                  iaa.Affine(
-                      scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},
-                      translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
-                      rotate=(-25, 25),
-                      shear=(-8, 8)
-                  )
-                  ),
-], random_order=True)  # apply augmenters in random order
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument( '--cloud', action="store_true", dest="cloud" )
+    args = parser.parse_args()
+    on_cloud = args.cloud
 
-# %%
-# TODO:
-# check if the batch normalization works well in training and testing phase => https://r2rt.com/implementing-batch-normalization-in-tensorflow.html
-#
-
-# %%
-# load data
-train_data = read_pickle('/floyd/input/data/train')
-
-# data spliting and organization
-features = train_data['data']
-labels = train_data['fine_labels']
-
-assert len(features) == len(labels)
-
-# OneHotEncoder lables
-onehot_encoder = OneHotEncoder(sparse=False)
-labels = np.reshape(labels, [-1, 1])
-labels = onehot_encoder.fit_transform(labels)
-
-
-# reshape and convert to gray
-features = np.reshape(features, [-1, 32, 32, 3])
-features = [cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for image in features]
-
-# data augmantation
-
-old_labels = labels
-old_features = features
-
-for i in range(3):
-    features = np.concatenate(
-        (features, seq.augment_images(old_features)), axis=0)
-    print(features.shape)
-    labels = np.concatenate((labels, old_labels), axis=0)
-
-del old_labels, old_features
-
-# reshape for standarization process
-features = np.reshape(features, [len(features), -1])
-
-# Standardize features
-scaler = MinMaxScaler()
-features = scaler.fit_transform(features)
-np.save('features', features)
-np.save('labels', labels)
-# cross validation spliting
-X_train, X_validation, y_train, y_validation = train_test_split(
-    features, labels, test_size=0.2, random_state=42)
-
-# reshaping input data
-X_train = np.reshape(X_train, [-1, 32, 32, 1])
-X_validation = np.reshape(X_validation, [-1, 32, 32, 1])
-
-
-# free the memory
-del train_data, features, labels, scaler, onehot_encoder,
+# training data preparation
+X_train, X_validation, y_train, y_validation = training_data( on_cloud = on_cloud )
 
 
 tf.reset_default_graph()
@@ -116,7 +30,7 @@ batch_size = 100
 
 # %%
 # declear dynamic data placeholder
-x = tf.placeholder(tf.float32, [None, 32, 32, 1])
+x = tf.placeholder(tf.float32, [None, 32, 32, 1],name='x')
 y = tf.placeholder(tf.float32, [None, n_classes], name='y')
 
 # Config.
@@ -227,12 +141,14 @@ def model(x, weights, biases):
 logits = model(x, weights, biases)
 
 cost = tf.reduce_mean(
-    tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=y))
+    tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=y,name='logits'),name='cost')
 
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
+predictions = tf.argmax(logits, 1, name="predictions")
+
 # Evaluate Model Node
-correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
+correct_prediction = tf.equal(predictions , tf.argmax(y, 1))
 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -254,7 +170,6 @@ with tf.Session() as sess:
 
     # max size of dataset
     max_len = X_train.shape[0]
-    print(max_len)
 
     for i in range(epochs):
         for batch in range(max_len//batch_size):
@@ -262,8 +177,6 @@ with tf.Session() as sess:
                               batch_size:min((batch+1)*batch_size, max_len)]
             batch_y = y_train[batch *
                               batch_size:min((batch+1)*batch_size, max_len)]
-
-            # print('.', end=" ")
 
             opt = sess.run(optimizer, feed_dict={
                            x: batch_x, y: batch_y, is_training: True})
