@@ -3,7 +3,7 @@
 this repo. contains Convolutional Neural Network implementation using Tensoreflow python 
 
 - Note : this old version of code achives 53% URL : https://github.com/Rawash/theD-Challange-CIFAR-100/blob/0d7441311e4bd127d200e5570cd65d5846e324fd/model.py
-![53% accuracy](http://url/to/img.png)
+![53% accuracy](https://github.com/Rawash/theD-Challange-CIFAR-100/raw/master/images/53accuracy.PNG)
 
 - current version achies about 47% accuracy !!! and in progress :)
 
