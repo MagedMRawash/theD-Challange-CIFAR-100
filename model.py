@@ -9,13 +9,9 @@ import argparse
 # for carbage collection
 gc.enable()
 
-
-# %%
 # TODO:
 # - move all Strings or veriables to config. file
 # - handle if the predected image is bigger than 32 * 32
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -186,7 +182,6 @@ init = tf.initializers.global_variables()
 # Add ops to save and restore all the variables.
 saver = tf.train.Saver()
 
-# %%
 with tf.Session() as sess:
     sess.run(init, feed_dict={is_training: True})
     train_loss = []
