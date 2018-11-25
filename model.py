@@ -18,17 +18,15 @@ if __name__ == '__main__':
 # training data preparation
 X_train, X_validation, y_train, y_validation = training_data(on_cloud=on_cloud)
 
-
 tf.reset_default_graph()
 
-# %%
 # initialization veriables
 n_classes = 100
 epochs = 250
 learning_rate = 0.001
 batch_size = 100
 
-# %%
+
 # declear dynamic data placeholder
 x = tf.placeholder(tf.float32, [None, 32, 32, 1], name='x')
 y = tf.placeholder(tf.float32, [None, n_classes], name='y')
@@ -37,19 +35,12 @@ y = tf.placeholder(tf.float32, [None, n_classes], name='y')
 is_training = tf.placeholder(tf.bool, name='is_training')
 keep_prob = tf.constant(0.60, tf.float32)
 
-
-# %%
-
-
 def batch_norm(x, simple=False):
     """
     batch normalization function for convolutions + folly connected layers 
         :param x: input neurons after weights mutiplied to it 
         :param simple=False: IF simple THEN get normalization for on axes [0]
     """
-    axes = [0] if simple else [0, 1, 2]
-    # batch_mean, batch_variance = tf.nn.moments(x, axes=axes)
-    # scale = tf.Variable())
     scale = tf.Variable(tf.ones(x.get_shape().as_list()[-1]))
     offset = tf.Variable(tf.zeros(x.get_shape().as_list()[-1]))
     x, _, _ = tf.nn.fused_batch_norm(
@@ -59,16 +50,16 @@ def batch_norm(x, simple=False):
 
 def conv_layer(x, w, wr, b, strides=1):
 
-    x2 = x
+    xr = x
 
     x = tf.nn.conv2d(x, w, strides=[1, strides, strides, 1], padding='SAME')
     x = batch_norm(x)
     x = tf.nn.bias_add(x, b)
     x = tf.nn.relu(x)
 
-    x2 = tf.nn.conv2d(x2, w, strides=[1, strides, strides, 1], padding='SAME')
-    x2 = batch_norm(x2)
-    x = tf.add(x,  x2)
+    xr = tf.nn.conv2d(xr, wr, strides=[1, strides, strides, 1], padding='SAME')
+    xr = batch_norm(xr)
+    x = tf.add(x,  xr)
     # x = tf.nn.bias_add(x, b)
     # x = tf.nn.relu(x)
 
@@ -85,16 +76,17 @@ def dropout(x):
 
 weights = {
     'wc1': tf.get_variable('w0', shape=(5, 5, 1, 32), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc1r': tf.get_variable('w0r', shape=(5, 5, 32, 64), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc1r': tf.get_variable('w0r', shape=(5, 5, 1, 32), initializer=tf.contrib.layers.xavier_initializer()),
+
 
     'wc2': tf.get_variable('w1', shape=(5, 5,  32, 64), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc2r': tf.get_variable('w1r', shape=(5, 5, 128, 256), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc2r': tf.get_variable('w1r', shape=(5, 5,  32, 64), initializer=tf.contrib.layers.xavier_initializer()),
 
     'wc3': tf.get_variable('w2', shape=(3, 3, 64, 128), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc3r': tf.get_variable('w2r', shape=(3, 3, 512, 1024), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc3r': tf.get_variable('w2r', shape=(3, 3, 64, 128), initializer=tf.contrib.layers.xavier_initializer()),
 
     'wc4': tf.get_variable('w3', shape=(1, 1, 128, 256), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc4r': tf.get_variable('w3r', shape=(1, 1, 2048, 4096), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc4r': tf.get_variable('w3r', shape=(1, 1, 128, 256), initializer=tf.contrib.layers.xavier_initializer()),
 
     'wf': tf.get_variable('wf', shape=(2*2*256, 256), initializer=tf.contrib.layers.xavier_initializer()),
     'wf2': tf.get_variable('wf2', shape=(256, 512), initializer=tf.contrib.layers.xavier_initializer()),
@@ -120,13 +112,13 @@ biases = {
 def model(x, weights, biases):
 
     # convolution layers
-    conv1 = conv_layer(x, weights['wc1'], weights['wc1r'], biases['bc1'])
+    conv1 = conv_layer(x, weights['wc1'],weights['wc1r'], biases['bc1'])
 
-    conv2 = conv_layer(conv1, weights['wc2'], weights['wc2r'], biases['bc2'])
+    conv2 = conv_layer(conv1, weights['wc2'],weights['wc2r'], biases['bc2'])
 
-    conv3 = conv_layer(conv2, weights['wc3'], weights['wc3r'], biases['bc3'])
+    conv3 = conv_layer(conv2, weights['wc3'],weights['wc3r'], biases['bc3'])
 
-    conv4 = conv_layer(conv3, weights['wc4'], weights['wc4r'], biases['bc4'])
+    conv4 = conv_layer(conv3, weights['wc4'],weights['wc4r'], biases['bc4'])
 
     # flatten
     # - Reshape conv4 output to fit fully connected layer input
@@ -141,15 +133,15 @@ def model(x, weights, biases):
 
     layer_2 = tf.add(tf.matmul(layer_1, weights['wf2']), biases['bf2'])
     layer_2 = tf.nn.relu(layer_2)
-    layer_2 = tf.layers.dropout(layer_2)
+    layer_2 = tf.layers.dropout(layer_2, rate=0.4)
 
     layer_3 = tf.add(tf.matmul(layer_2, weights['wf3']), biases['bf3'])
     layer_3 = tf.nn.relu(layer_3)
-    layer_3 = tf.layers.dropout(layer_3)
+    layer_3 = tf.layers.dropout(layer_3, rate=0.4)
 
     layer_4 = tf.add(tf.matmul(layer_3, weights['wf4']), biases['bf4'])
     layer_4 = tf.nn.relu(layer_4)
-    layer_4 = tf.layers.dropout(layer_4)
+    layer_4 = tf.layers.dropout(layer_4, rate=0.4)
 
 #     layer_2 = dropout(layer_2)
 

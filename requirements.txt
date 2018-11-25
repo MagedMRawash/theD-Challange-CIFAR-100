@@ -1,5 +1,6 @@
-tensorflow=='1.11.0'
-imgaug
-opencv_python
 sklearn
 pandas
+numpy
+tensorflow=='1.11.0'
+imgaug
+opencv-python
