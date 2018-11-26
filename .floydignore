@@ -16,5 +16,6 @@ dataset
 Output
 draft
 draft.py
-Output
+output
 checkpoint
+.gitignore

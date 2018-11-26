@@ -109,3 +109,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 data/__pycache__/
+*.jpg

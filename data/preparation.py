@@ -4,6 +4,7 @@ import gc
 import numpy as np
 import cv2
 from config import *
+from sklearn.externals.joblib import dump, load
 # for carbage collection
 gc.enable()
 
@@ -27,6 +28,8 @@ def training_data(data_multiplied, on_cloud=False):
     # data spliting and organization 
     features = train_data['data']
     labels = train_data['fine_labels']
+    # free the memory
+    del train_data
 
     assert len(features) == len(labels)
 
@@ -44,14 +47,18 @@ def training_data(data_multiplied, on_cloud=False):
     # Standardize features
     scaler = MinMaxScaler()
     features = scaler.fit_transform(features)
+    dump( scaler, './checkpoint/scaler.joblib' )
+    # free the memory
+    del scaler
 
     # OneHotEncoder lables
     onehot_encoder = OneHotEncoder(sparse=False)
-    labels = np.reshape(labels, [-1, 1])
+    labels = np.reshape(labels, [-1, 1] )
     labels = onehot_encoder.fit_transform(labels)
+    dump( onehot_encoder, './checkpoint/onehot_encoder.joblib' )
 
     # free the memory
-    del train_data, scaler, onehot_encoder,
+    del onehot_encoder
 
     return features, labels
 
@@ -63,8 +70,13 @@ def predict_image(image_path):
 
     # gray image
     image = cv2.imread(image_path, 0)
-    # Standardize features
-    # pass
 
-    return np.reshape(image, (32, 32, 1))
+    image = np.reshape(image, (1, data_width * data_hight ) )
+    
+    # Standardize features
+    scaler = load('./checkpoint/scaler.joblib')
+    image = scaler.transform(image)
+    del scaler
+
+    return  np.reshape(image, (32, 32, 1) ) 
 
