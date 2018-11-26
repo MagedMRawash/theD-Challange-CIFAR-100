@@ -41,3 +41,10 @@ those are the same as the requirments.txt file contains
 * [imgaug] - Image augmentation for machine learning experiments. http://imgaug.readthedocs.io
 * [sklearn] - scikit-learn. Machine Learning in Python. 
 * [NumPy] - NumPy is the fundamental package for scientific computing with Python.
+
+### Updates
+I updated the repo. 
+to get the deleverd version at the deadline please write 
+```sh 
+git checkout delevered 
+```
