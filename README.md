@@ -19,8 +19,9 @@ this repo. contains Convolutional Neural Network implementation using Tensoreflo
 - to run the model for training purpose 
     - extract  `cifar-100-python.tar.gz`  in `dataset` folder then Run 
         ```sh  
-        $ python model.py 
+        $ python model.py --data {dataPath} --aug {number}
         ```
+        --aug => number of data duplication after augmantation process; defult=2 
 ### Future work
 
 Next i will implement the follwing Arch.s .

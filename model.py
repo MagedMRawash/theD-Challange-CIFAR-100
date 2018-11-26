@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from data.preparation import training_data
 import argparse
+from config import *
 # for carbage collection
 gc.enable()
 
@@ -13,34 +14,34 @@ gc.enable()
 # - move all Strings or veriables to config. file
 # - handle if the predected image is bigger than 32 * 32
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--data', dest="data_path")
     parser.add_argument('--cloud', action="store_true", dest="cloud")
+    # to multiplay the dataset with augmentation process add arg=> --aug
+    parser.add_argument('--aug', dest="data_multiplied")
     args = parser.parse_args()
     on_cloud = args.cloud
+    data_path = args.data_path  if args.data_path else data_path
+    data_multiplied = args.data_multiplied if args.data_multiplied else data_multiplied
 
 # training data preparation
-features, labels = training_data(on_cloud=on_cloud)
+features, labels = training_data(
+    data_multiplied=data_multiplied,  on_cloud=on_cloud)
 
 # cross validation spliting
 X_train, X_validation, y_train, y_validation = train_test_split(
-    features, labels, test_size=0.2, random_state=42)
+    features, labels, test_size=test_size, random_state=42)
 
 del features, labels
 
 # reshaping input data
-X_train = np.reshape(X_train, [-1, 32, 32, 1])
-X_validation = np.reshape(X_validation, [-1, 32, 32, 1])
+X_train = np.reshape(X_train, imgDim)
+X_validation = np.reshape(X_validation, imgDim)
 
 
 tf.reset_default_graph()
-
-# initialization veriables
-n_classes = 100
-epochs = 250
-learning_rate = 0.001
-batch_size = 64
-
 
 # declear dynamic data placeholder
 x = tf.placeholder(tf.float32, [None, 32, 32, 1], name='x')
@@ -60,12 +61,19 @@ def batch_norm(x, simple=False):
     scale = tf.Variable(tf.ones(x.get_shape().as_list()[-1]))
     offset = tf.Variable(tf.zeros(x.get_shape().as_list()[-1]))
     x, _, _ = tf.nn.fused_batch_norm(
-        x, scale, offset, epsilon=0.001, data_format='NHWC')
+        x, scale, offset, epsilon=epsilon, data_format='NHWC')
     return x
 
 
 def conv_layer(x, w, wr, b, strides=1):
-
+    """
+    CNN => near to ResNet Arch. 
+        :param x: batch of data 
+        :param w: Weight of layer one 
+        :param wr: Weight of layer two 
+        :param b: baises 
+        :param strides=1: 
+    """
     xr = x
 
     x = tf.nn.conv2d(x, w, strides=[1, strides, strides, 1], padding='SAME')
@@ -76,7 +84,6 @@ def conv_layer(x, w, wr, b, strides=1):
     xr = tf.nn.conv2d(xr, wr, strides=[1, strides, strides, 1], padding='SAME')
     xr = batch_norm(xr)
     x = tf.add(x,  xr)
-
 
     return maxpool(x)
 
@@ -90,34 +97,34 @@ def dropout(x):
 
 
 weights = {
-    'wc1': tf.get_variable('w0', shape=(5, 5, 1, 32), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc1r': tf.get_variable('w0r', shape=(5, 5, 1, 32), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc1': tf.get_variable('w0', shape=(5, 5, 1, neuron), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc1r': tf.get_variable('w0r', shape=(5, 5, 1, neuron), initializer=tf.contrib.layers.xavier_initializer()),
 
 
-    'wc2': tf.get_variable('w1', shape=(5, 5,  32, 64), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc2r': tf.get_variable('w1r', shape=(5, 5,  32, 64), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc2': tf.get_variable('w1', shape=(5, 5,  neuron, neuron*2), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc2r': tf.get_variable('w1r', shape=(5, 5,  neuron, neuron*2), initializer=tf.contrib.layers.xavier_initializer()),
 
-    'wc3': tf.get_variable('w2', shape=(3, 3, 64, 128), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc3r': tf.get_variable('w2r', shape=(3, 3, 64, 128), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc3': tf.get_variable('w2', shape=(3, 3, neuron*2, neuron*4), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc3r': tf.get_variable('w2r', shape=(3, 3, neuron*2, neuron*4), initializer=tf.contrib.layers.xavier_initializer()),
 
-    'wc4': tf.get_variable('w3', shape=(1, 1, 128, 256), initializer=tf.contrib.layers.xavier_initializer()),
-    'wc4r': tf.get_variable('w3r', shape=(1, 1, 128, 256), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc4': tf.get_variable('w3', shape=(1, 1,  neuron*4,  neuron*8), initializer=tf.contrib.layers.xavier_initializer()),
+    'wc4r': tf.get_variable('w3r', shape=(1, 1,  neuron*4,  neuron*8), initializer=tf.contrib.layers.xavier_initializer()),
 
-    'wf': tf.get_variable('wf', shape=(2*2*256, 256), initializer=tf.contrib.layers.xavier_initializer()),
-    'wf2': tf.get_variable('wf2', shape=(256, 512), initializer=tf.contrib.layers.xavier_initializer()),
-    'wf3': tf.get_variable('wf3', shape=(512, 256), initializer=tf.contrib.layers.xavier_initializer()),
-    'wf4': tf.get_variable('wf4', shape=(256, 170), initializer=tf.contrib.layers.xavier_initializer()),
+    'wf': tf.get_variable('wf', shape=(2*2*neuron*8,  neuron*8), initializer=tf.contrib.layers.xavier_initializer()),
+    'wf2': tf.get_variable('wf2', shape=(neuron*8, neuron*16), initializer=tf.contrib.layers.xavier_initializer()),
+    'wf3': tf.get_variable('wf3', shape=(neuron*16, neuron*8), initializer=tf.contrib.layers.xavier_initializer()),
+    'wf4': tf.get_variable('wf4', shape=(neuron*8, 170), initializer=tf.contrib.layers.xavier_initializer()),
 
     'out': tf.get_variable('wout', shape=(170, n_classes), initializer=tf.contrib.layers.xavier_initializer()),
 }
 biases = {
-    'bc1': tf.get_variable('b0', shape=(32), initializer=tf.contrib.layers.xavier_initializer()),
-    'bc2': tf.get_variable('b1', shape=(64), initializer=tf.contrib.layers.xavier_initializer()),
-    'bc3': tf.get_variable('b2', shape=(128), initializer=tf.contrib.layers.xavier_initializer()),
-    'bc4': tf.get_variable('b3', shape=(256), initializer=tf.contrib.layers.xavier_initializer()),
-    'bf': tf.get_variable('bf', shape=(256), initializer=tf.contrib.layers.xavier_initializer()),
-    'bf2': tf.get_variable('bf2', shape=(512), initializer=tf.contrib.layers.xavier_initializer()),
-    'bf3': tf.get_variable('bf3', shape=(256), initializer=tf.contrib.layers.xavier_initializer()),
+    'bc1': tf.get_variable('b0', shape=(neuron), initializer=tf.contrib.layers.xavier_initializer()),
+    'bc2': tf.get_variable('b1', shape=(neuron*2), initializer=tf.contrib.layers.xavier_initializer()),
+    'bc3': tf.get_variable('b2', shape=(neuron*4), initializer=tf.contrib.layers.xavier_initializer()),
+    'bc4': tf.get_variable('b3', shape=(neuron*8), initializer=tf.contrib.layers.xavier_initializer()),
+    'bf': tf.get_variable('bf', shape=(neuron*8), initializer=tf.contrib.layers.xavier_initializer()),
+    'bf2': tf.get_variable('bf2', shape=(neuron*16), initializer=tf.contrib.layers.xavier_initializer()),
+    'bf3': tf.get_variable('bf3', shape=(neuron*8), initializer=tf.contrib.layers.xavier_initializer()),
     'bf4': tf.get_variable('bf4', shape=(170), initializer=tf.contrib.layers.xavier_initializer()),
 
     'out': tf.get_variable('bout', shape=(n_classes), initializer=tf.contrib.layers.xavier_initializer()),
